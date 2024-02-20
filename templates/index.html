@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Upload and Visualization</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa; /* Soft arka plan rengi */
+            font-family: Arial, sans-serif; /* Genel font */
+            font-size: 16px; /* Genel font büyüklüğü */
+        }
+        .badge-high-capacity {
+            background-color: #ff5733; /* Ateş kırmızısı */
+        }
+        .badge-low-capacity {
+            background-color: #b3d4ff; /* Soğuk mavi */
+        }
+        .map-container {
+            height: 600px;
+        }
+        .form-row {
+            margin-bottom: 15px; /* Form girişleri arasındaki boşluk */
+        }
+        .form-group label {
+            font-size: 18px; /* Başlık font büyüklüğü */
+            font-weight: bold; /* Kalın başlık */
+        }
+    </style>
+</head>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('fileInput').addEventListener('change', function() {
+            var file = this.files[0];
+            var formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/get-columns', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                var select = document.getElementById('columnSelect');
+                select.innerHTML = ''; // Önceki seçenekleri temizle
+                data.forEach(function(column) {
+                    var option = new Option(column, column);
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    });
+</script>
+<body>
+    <div class="container-fluid mt-5">
+        <div class="row">
+            <div class="col-md-3">
+                <!-- Sol taraftaki en düşük istatistik kutusu -->
+                <h3 style="font-size: 24px; font-weight: bold;">En Düşük {{ capacity_column }} Şubeler</h3>
+                <ul class="list-group">
+                    {% for branch in bottom_branches %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ branch['Label'] }}
+                            <span class="badge badge-low-capacity badge-pill">
+                                {{ (branch[capacity_column] | int ) }}
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <!-- Orta kısımdaki harita -->
+                <div class="map-container">
+                    {% if map_file %}
+                        <iframe src="{{ url_for('static', filename=map_file) }}" width="100%" height="100%"></iframe>
+                    {% else %}
+                        <p>Harita bulunamadı.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <!-- Sağ taraftaki en yüksek istatistik kutusu -->
+                <h3 style="font-size: 24px; font-weight: bold;">En Yüksek {{ capacity_column }} Şubeler</h3>
+                <ul class="list-group">
+                    {% for branch in top_branches %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ branch['Label'] }}
+                            <span class="badge badge-high-capacity badge-pill">
+                                {{ (branch[capacity_column] | int ) }}
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="row mt-5">
+            <div class="col-md-12">
+                <!-- Dosya yükleme ve diğer giriş seçenekleri burada -->
+                <form action="/" method="post" enctype="multipart/form-data">
+                    <!-- Giriş seçenekleri -->
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label for="fileInput">Dosya Seç</label>
+                            <input type="file" class="form-control-file" id="fileInput" name="file">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="mapOption">Görselleştirme Yapılcak Harita</label>
+                            <select class="form-control" id="mapOption" name="map_option">
+                                <option value="0">Garenta Şubeleri Haritası</option>
+                                <option value="1">Türkiye Haritası</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="columnSelect">Veri Sütunu</label>
+                            <select class="form-control" id="columnSelect" name="selected_column">
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="colorPalette">Renk Paleti</label>
+                            <select class="form-control" id="colorPalette" name="color_palette">
+                                <option value="YlOrRd">YellowOrangeRed</option>
+                                <option value="RdYlBu">RedYellowBlue</option>
+                                <option value="GnBu">GreenBlue</option>
+                                <option value="Oranges">Oranges</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="thresholdScaleInput">Manuel Aralık (vigül ile ayrıın. Örnek: 0,25,50,75,100)</label>
+                            <input type="text" class="form-control" id="thresholdScaleInput" name="threshold_scale" placeholder="Enter threshold scale">
+                        </div>
+                    </div>
+                    <!-- Upload butonu -->
+                    <button type="submit" class="btn btn-primary">Görselleştir</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
