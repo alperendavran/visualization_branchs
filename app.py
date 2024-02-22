@@ -13,6 +13,7 @@ import folium.plugins as plugins
 import tempfile
 import uuid  # Eklenen kütüphane
 
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['UPLOAD_FOLDER'] = 'uploads'  # Dosyaların yükleneceği klasör
@@ -344,5 +345,5 @@ def upload_file():
                                capacity_column="", columns=[])
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
+    port = int(os.environ.get('PORT', 80))  # Azure tarafından sağlanan PORT değerini kullan
+    app.run(host='0.0.0.0', port=port)
