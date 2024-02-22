@@ -1,6 +1,6 @@
-Flask==2.1.2
-pandas==1.4.2
-folium==0.12.1
-branca==0.5.0
-numpy==1.22.3
-Unidecode==1.3.4
+Flask
+pandas
+folium
+branca
+numpy
+Unidecode
