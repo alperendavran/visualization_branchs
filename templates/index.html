@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +9,9 @@
     <style>
         body {
             background-color: #f8f9fa; /* Soft arka plan rengi */
-            font-family: Arial, sans-serif; /* Genel font */
             font-size: 16px; /* Genel font büyüklüğü */
+            font-family: 'Roboto', sans-serif;
+
         }
         .badge-high-capacity {
             background-color: #ff5733; /* Ateş kırmızısı */
@@ -27,8 +29,41 @@
             font-size: 18px; /* Başlık font büyüklüğü */
             font-weight: bold; /* Kalın başlık */
         }
+
+        
+
+    .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    transition: background-color 0.3s ease-in-out, transform 0.3s ease;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-weight: bold;
+}
+
+    .btn-primary:hover, .btn-primary:focus {
+        background-color: #0056b3;
+        border-color: #0056b3;
+        transform: scale(1.05);
+    }
+
+    .btn-primary:active {
+        transform: scale(0.95);
+}
+
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --info-color: #17a2b8;
+    /* Add more as needed */
+}
+
     </style>
+
+
 </head>
+
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -54,10 +89,16 @@
         });
     });
 </script>
+
+
+
+    </script>
+
 <body>
     <div class="container-fluid mt-5">
         <div class="row">
-            <div class="col-md-3">
+            <div class="col-md-2">
+                {% if bottom_branches %}
                 <!-- Sol taraftaki en düşük istatistik kutusu -->
                 <h3 style="font-size: 24px; font-weight: bold;">En Düşük {{ capacity_column }} Şubeler</h3>
                 <ul class="list-group">
@@ -65,23 +106,31 @@
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             {{ branch['Label'] }}
                             <span class="badge badge-low-capacity badge-pill">
-                                {{ (branch[capacity_column] | int ) }}
+                                {{ (branch[capacity_column] | round(2) ) }}
                             </span>
                         </li>
                     {% endfor %}
                 </ul>
+                {% endif %}
             </div>
-            <div class="col-md-6">
+            <div class="col-md-8">
                 <!-- Orta kısımdaki harita -->
+                
                 <div class="map-container">
+                    {% if top_branches %}
+                    <h2 style="text-align: center; margin-bottom: 20px;">Garenta Şube {{ capacity_column }}  İstatistikleri</h2>
+                    {% else %}
+                    <h2 style="text-align: center; margin-bottom: 20px;">Tüm Türkiye'deki Garenta Şubeleri</h2>
+                    {% endif %}
                     {% if map_file %}
-                        <iframe src="{{ url_for('static', filename=map_file) }}" width="100%" height="100%"></iframe>
+                        <iframe src="{{ url_for('static', filename=map_file) }}" width="100%" height="95%"></iframe>
                     {% else %}
                         <p>Harita bulunamadı.</p>
                     {% endif %}
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                {% if top_branches %}
                 <!-- Sağ taraftaki en yüksek istatistik kutusu -->
                 <h3 style="font-size: 24px; font-weight: bold;">En Yüksek {{ capacity_column }} Şubeler</h3>
                 <ul class="list-group">
@@ -89,23 +138,34 @@
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             {{ branch['Label'] }}
                             <span class="badge badge-high-capacity badge-pill">
-                                {{ (branch[capacity_column] | int ) }}
+                                {{ (branch[capacity_column] | round(2) ) }}
                             </span>
                         </li>
                     {% endfor %}
                 </ul>
+                {% endif %}
             </div>
         </div>
         <div class="row mt-5">
             <div class="col-md-12">
                 <!-- Dosya yükleme ve diğer giriş seçenekleri burada -->
-                <form action="/" method="post" enctype="multipart/form-data">
-                    <!-- Giriş seçenekleri -->
+                <form action="/" method="post" enctype="multipart/form-data" class="mb-3">
                     <div class="form-row">
-                        <div class="form-group col-md-4">
-                            <label for="fileInput">Dosya Seç</label>
-                            <input type="file" class="form-control-file" id="fileInput" name="file">
-                        </div>
+                        <form method="post" enctype="multipart/form-data">
+                        <!-- Dosya yükleme alanı her zaman göster -->
+                        <div class="form-group">
+                        <label for="fileInput">Dosya Seç</label>
+                        <input type="file" class="form-control-file" id="fileInput" name="file">
+                    </div>
+                            <div class="form-group col-md-4">
+                                <label for="GarentaŞubeInput">Şube Sütunu</label>
+                                <input type="text" class="form-control" id="GarentaŞubeInput" name="GarentaŞubeInput" placeholder="Garenta şubelerinin bulunduğu sütün ismi ">
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="columnSelect">Veri Sütunu</label>
+                                <select class="form-control" id="columnSelect" name="selected_column">
+                                </select>
+                            </div>
                         <div class="form-group col-md-4">
                             <label for="mapOption">Görselleştirme Yapılcak Harita</label>
                             <select class="form-control" id="mapOption" name="map_option">
@@ -113,28 +173,26 @@
                                 <option value="1">Türkiye Haritası</option>
                             </select>
                         </div>
-                        <div class="form-group col-md-4">
-                            <label for="columnSelect">Veri Sütunu</label>
-                            <select class="form-control" id="columnSelect" name="selected_column">
-                            </select>
-                        </div>
+
                         <div class="form-group col-md-4">
                             <label for="colorPalette">Renk Paleti</label>
                             <select class="form-control" id="colorPalette" name="color_palette">
                                 <option value="YlOrRd">YellowOrangeRed</option>
-                                <option value="RdYlBu">RedYellowBlue</option>
-                                <option value="GnBu">GreenBlue</option>
+                                <option value="YlGnBu">YellowGreenBlue</option>
+                                <option value="YlGn">YellowGreen</option>
                                 <option value="Oranges">Oranges</option>
                             </select>
                         </div>
                         <div class="form-group col-md-4">
-                            <label for="thresholdScaleInput">Manuel Aralık (vigül ile ayrıın. Örnek: 0,25,50,75,100)</label>
-                            <input type="text" class="form-control" id="thresholdScaleInput" name="threshold_scale" placeholder="Enter threshold scale">
+                            <label for="thresholdScaleInput">Manuel Aralık</label>
+                            <input type="text" class="form-control" id="thresholdScaleInput" name="threshold_scale" placeholder="Virgül ile ayrıın. Örnek: 0,25,50,75,100">
                         </div>
                     </div>
                     <!-- Upload butonu -->
-                    <button type="submit" class="btn btn-primary">Görselleştir</button>
-                </form>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-chart-pie"></i> Görselleştir
+                    </button>            
+                    </form>
             </div>
         </div>
     </div>

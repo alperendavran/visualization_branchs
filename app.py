@@ -10,12 +10,32 @@ import unicodedata
 import unidecode
 import branca.colormap as cm
 import folium.plugins as plugins
+import tempfile
+import uuid  # Eklenen kütüphane
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['UPLOAD_FOLDER'] = mkdtemp()
+app.config['UPLOAD_FOLDER'] = 'uploads'  # Dosyaların yükleneceği klasör
 
+# Gerekli klasör yoksa oluştur
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
 
+def adjust_threshold_scale(data, column, manual_thresholds):
+    min_value = data[column].min()
+    max_value = data[column].max()
+
+    # Kullanıcı tarafından girilen eşik değerler listesinin ilk elemanı veri setinin minimum değerinden büyükse,
+    # veri setinin minimum değerini listenin başına ekle.
+    if manual_thresholds and manual_thresholds[0] > min_value:
+        manual_thresholds.insert(0, min_value)
+
+    # Kullanıcı tarafından girilen eşik değerler listesinin son elemanı veri setinin maksimum değerinden küçükse,
+    # veri setinin maksimum değerini listenin sonuna ekle.
+    if manual_thresholds and manual_thresholds[-1] < max_value:
+        manual_thresholds.append(max_value)
+
+    return manual_thresholds
 
 def normalize_text(text):
     text = unidecode.unidecode(text)
@@ -27,17 +47,20 @@ def normalize_text(text):
 
 
 # GeoJSON verisini yükle
-with open('/Users/alperendavran/Downloads/map-2.geojson', 'r') as f:
+with open('map-2.geojson', 'r') as f:
     turkey_map = json.load(f)
 
 
-with open('/Users/alperendavran/garenta_branch_statistic/turkey_yeni.geojson', 'r') as f:
+with open('turkey_yeni.geojson', 'r') as f:
     raw_map = json.load(f)
 
-garenta=pd.read_excel("/Users/alperendavran/garenta_branch_statistic/garenta_branches.xlsx")
+garenta=pd.read_excel("garenta_branches.xlsx")
 garenta['City'] = garenta['City'].apply(normalize_text)
 
-    
+for feature in turkey_map['features']:
+    if 'Label' not in feature['properties'] or feature['properties']['Label'] is None:
+      feature['properties']['Label'] = 'Placeholder'
+    feature['properties']['Label'] = normalize_text(feature['properties']['Label'])
 
 for feature in raw_map['features']:
     feature['properties']['name'] = normalize_text(feature['properties']['name'])
@@ -55,7 +78,7 @@ def generate_threshold_scale(data, capacity_column):
 
 
 def create_initial_map():
-    m = folium.Map(location=[39.925533, 32.866287], zoom_start=5.2,tiles="cartodbpositron")
+    m = folium.Map(location=[37.925533, 35.06287], zoom_start=5.5,tiles="cartodbpositron")
 
     folium.plugins.Fullscreen(
     position="topright",
@@ -64,9 +87,7 @@ def create_initial_map():
     force_separate_button=True,
     ).add_to(m) 
 
-    # Stil fonksiyonunu tanımla
     def style_function(feature):
-        # Eğer 'label' değeri varsa sarı renkle boyanacak
         if feature['properties']['name'] in garenta["City"].to_list():
             return {
                 'fillColor': '#FF8C00',
@@ -74,9 +95,8 @@ def create_initial_map():
                 'weight': 1,
                 'fillOpacity': 0.3,
                 'line_opacity': 0.01
-            }
+               }
         else:
-            # 'label' değeri yoksa (None), şeffaf bir stil uygula
             return {
                 'fillColor': 'black',
                 'color': 'transparent',
@@ -84,10 +104,8 @@ def create_initial_map():
                 'line_opacity': 0.4
             }
 
-    # GeoJson katmanını oluştur ve haritaya ekle
     folium.GeoJson(raw_map, style_function=style_function).add_to(m)
 
-    # Haritayı statik dosya olarak kaydet
     m.save('static/initial_map.html')
 
     return m
@@ -115,11 +133,13 @@ def update_map_2(user_data, capacity_column, color_palette,threshold_scale):
     if type_flag:
         user_data[capacity_column] = user_data[capacity_column].apply(lambda x: x * 100 if 0 < x < 1 else x)
         legend = capacity_column + " Yüzdesi (%)"
+    #m = folium.Map(location=[37.925533, 35.06287], zoom_start=5.5,tiles="cartodbpositron")
     m = folium.Map(location=[39.925533, 32.866287], zoom_start=5,tiles="openstreetmap")
 
-    threshold_scale = generate_threshold_scale(user_data, capacity_column)
+    if threshold_scale==[]:
+        threshold_scale = generate_threshold_scale(user_data, capacity_column)
 
-
+    folium.Choropleth
     folium.Choropleth(
         geo_data=raw_map,
         data=user_data,
@@ -191,9 +211,16 @@ def update_map(user_data, capacity_column, color_palette,threshold_scale):
     if type_flag:
         user_data[capacity_column] = user_data[capacity_column].apply(lambda x: x * 100 if 0 < x < 1 else x)
         legend = capacity_column + " Yüzdesi (%)"
-    m = folium.Map(location=[39.925533, 32.866287], zoom_start=5,tiles="cartodbpositron")
+    m = folium.Map(location=[37.925533, 35.06287], zoom_start=5.5,tiles="cartodbpositron")
+    #m = folium.Map(location=[37.925533, 35.06287], zoom_start=5.5,tiles="openstreetmap")
 
-    threshold_scale = generate_threshold_scale(user_data, capacity_column)
+    if threshold_scale:
+        threshold_scale = adjust_threshold_scale(user_data, capacity_column, threshold_scale)
+        print(threshold_scale)
+
+    else:
+        threshold_scale = generate_threshold_scale(user_data, capacity_column)
+        print("zoert")
 
     folium.Choropleth(
         geo_data=turkey_map,
@@ -201,11 +228,10 @@ def update_map(user_data, capacity_column, color_palette,threshold_scale):
         columns=['Label', capacity_column],
         key_on='properties.Label',
         fill_color=color_palette,
-        fill_opacity=0.7,
+        fill_opacity=0.6,
         line_opacity=0.4,
         legend_name=legend,
         threshold_scale=threshold_scale,
-        highlight = True
 
     ).add_to(m)
 
@@ -258,7 +284,6 @@ def update_map(user_data, capacity_column, color_palette,threshold_scale):
     # DataFrame'leri değil, listeleri döndür
     return m, top_branches_list, bottom_branches_list
 
-
 @app.route('/get-columns', methods=['POST'])
 def get_columns():
     file = request.files.get('file')
@@ -271,63 +296,53 @@ def get_columns():
     # Dosyayı oku ve sütun isimlerini al
     df = pd.read_excel(filepath)
     columns = df.columns.tolist()[1:]
-    
     return jsonify(columns)
 
 
-
+# Ana sayfa ve dosya yükleme formu
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
-
-    if request.method == 'POST':
-        file = request.files['file']
-        selected_column = request.form.get('selected_column')
-        map_option = request.form.get('map_option')        
-        color_palette = request.form.get('color_palette', 'YlOrRd')  # Varsayılan olarak 'YlOrRd' kullan
-        print(f"Seçilen Renk Paleti: {color_palette}")
-        
-        # threshold_scale form verisini al ve işle
-        threshold_scale_input = request.form.get('threshold_scale')
-        if threshold_scale_input:
-        # Girdiyi virgülle ayrılmış sayılara dönüştür
-            threshold_scale = list(map(int, threshold_scale_input.split(',')))
-        else:
-         # Varsayılan değeri kullan
-            threshold_scale = []
-
+   
+   if request.method == 'POST':
+        file = request.files['file'] 
         if file and '.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in ['xlsx', 'xls']:            
-            
-            user_data = pd.read_excel(file)            
+            user_data = pd.read_excel(file)
+            old_column_name = request.form.get('GarentaŞubeInput')  # Assuming this gets the old column name correctly
+            user_data = user_data.rename(columns={old_column_name: "Label"})
+            selected_column = request.form.get('selected_column')
             user_data['Label'] = user_data['Label'].apply(normalize_text)
-            # Check for null values in critical columns
-            
+            map_option = request.form.get('map_option')
+            color_palette = request.form.get('color_palette', 'YlOrRd')
+            print(f"Seçilen Renk Paleti: {color_palette}")
+            threshold_scale_input = request.form.get('threshold_scale')
+
+            if threshold_scale_input and isinstance(threshold_scale_input, str):
+                threshold_scale = list(map(int, threshold_scale_input.split(',')))
+                print(threshold_scale)
+            else:
+                threshold_scale = []
+            user_data[selected_column] = user_data[selected_column].fillna(0)
             if user_data[['Label', selected_column]].isnull().any().any():
-                jsonify({"Null values found in critical columns."}), 400
-            else:
-                print("No null values in critical columns.")
+                return jsonify({"error": "Critical columns contain null values"}), 400
 
-            # Check DataFrame for 'Label' column existence and non-null values
-            if 'Label' in user_data.columns and user_data['Label'].isnull().sum() == 0:
-                print("DataFrame is properly set up.")
-            else:
-                jsonify({"DataFrame 'Label' column issue detected. You must add your data under the 'Label' column"}), 400
-                #print("DataFrame 'Label' column issue detected. You must add your data under the 'Label' column")
-            if map_option=="0":
-                m, top_branches, bottom_branches = update_map(user_data, selected_column, color_palette,threshold_scale)
-            elif map_option=="1":
-                m, top_branches, bottom_branches = update_map_2(user_data, selected_column, color_palette,threshold_scale)
+            if 'Label' not in user_data.columns or user_data['Label'].isnull().sum() > 0:
+                return jsonify({"error": "DataFrame 'Label' column issue detected. You must add your data under the 'Label' column"}), 400
 
-            # top_branches ve bottom_branches verilerini liste olarak dönüştür ve gönder
-            return render_template('index.html', map_file='updated_map.html', top_branches=top_branches, bottom_branches=bottom_branches, capacity_column=selected_column)
+            if map_option == "0":
+                m, top_branches, bottom_branches = update_map(user_data, selected_column, color_palette, threshold_scale)
+            elif map_option == "1":
+                m, top_branches, bottom_branches = update_map_2(user_data, selected_column, color_palette, threshold_scale)
+
+            return render_template('index.html', map_file='updated_map.html', top_branches=top_branches,
+                                bottom_branches=bottom_branches, capacity_column=selected_column,threshold_scale=threshold_scale)
         else:
-            # Hata mesajı döndür
-            return jsonify({'error': 'Desteklenmeyen dosya formatı. Lütfen bir Excel dosyası yükleyin.'}), 400
-
-    else:
+            return jsonify({'error': 'Dosya yüklenmedi ve önceki yükleme bulunamadı.'}), 400
+        
+   else:
         create_initial_map()
-        return render_template('index.html', map_file='initial_map.html', top_branches=[], bottom_branches=[], capacity_column="",columns=[])
+        return render_template('index.html', map_file='initial_map.html', top_branches=[], bottom_branches=[],
+                               capacity_column="", columns=[])
 
 if __name__ == '__main__':
     app.run(debug=True)
-
 
