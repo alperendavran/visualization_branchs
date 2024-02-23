@@ -64,6 +64,47 @@
 
 </head>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('dataVisualizationForm').addEventListener('submit', function(e) {
+            // Gerekli alanların kontrolü
+            var fileInput = document.getElementById('fileInput');
+            var garentaSubeInput = document.getElementById('GarentaŞubeInput').value.trim();
+            var selectedColumn = document.getElementById('columnSelect').value.trim();
+            var hasError = false;
+
+            // Dosya yükleme kontrolü
+            if (!fileInput.files.length) {
+                alert('Lütfen bir dosya seçiniz.');
+                fileInput.style.borderColor = 'red';
+                hasError = true;
+            } else {
+                fileInput.style.borderColor = ''; // Hata yoksa çerçeveyi sıfırla
+            }
+
+            // GarentaŞubeInput kontrolü
+            if (!garentaSubeInput) {
+                document.getElementById('GarentaŞubeInput').style.borderColor = 'red';
+                hasError = true;
+            } else {
+                document.getElementById('GarentaŞubeInput').style.borderColor = ''; // Hata yoksa çerçeveyi sıfırla
+            }
+
+            // selectedColumn kontrolü
+            if (!selectedColumn) {
+                document.getElementById('columnSelect').style.borderColor = 'red';
+                hasError = true;
+            } else {
+                document.getElementById('columnSelect').style.borderColor = ''; // Hata yoksa çerçeveyi sıfırla
+            }
+
+            if (hasError) {
+                e.preventDefault(); // Form gönderimini engelle
+            }
+        });
+    });
+</script>
+
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -149,7 +190,7 @@
         <div class="row mt-5">
             <div class="col-md-12">
                 <!-- Dosya yükleme ve diğer giriş seçenekleri burada -->
-                <form action="/" method="post" enctype="multipart/form-data" class="mb-3">
+                <form action="/" method="post" enctype="multipart/form-data" class="mb-3" id="dataVisualizationForm">
                     <div class="form-row">
                         <form method="post" enctype="multipart/form-data">
                         <!-- Dosya yükleme alanı her zaman göster -->
