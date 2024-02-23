@@ -7,6 +7,7 @@ from tempfile import mkdtemp
 import numpy as np
 import unidecode
 import folium.plugins as plugins
+from io import BytesIO
 
 
 
@@ -32,7 +33,7 @@ with open('map-2.geojson', 'r') as f:
     turkey_map = json.load(f)
 
 
-with open('turkey_yeni.geojson', 'r') as f:
+with open('turkey_yeni2.geojson', 'r') as f:
     raw_map = json.load(f)
 
 
@@ -266,8 +267,12 @@ def update_map(user_data, capacity_column, color_palette,threshold_scale,m):
 @app.route('/get-columns', methods=['POST'])
 def get_columns():
     file = request.files.get('file')
-    df = pd.read_excel(file.filename)
-    columns = df.columns.tolist()[1:]
+    if file:
+        # Dosyayı BytesIO nesnesi olarak oku
+        stream = BytesIO(file.read())
+        df = pd.read_excel(stream)
+        columns = df.columns.tolist()[1:]
+        print(columns)
     return jsonify(columns)
 
 
