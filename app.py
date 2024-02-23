@@ -29,7 +29,7 @@ garenta['City'] = garenta['City'].apply(normalize_text)
 
 
 # GeoJSON verisini yükle
-with open('map-2.geojson', 'r') as f:
+with open('map-3.geojson', 'r') as f:
     turkey_map = json.load(f)
 
 
