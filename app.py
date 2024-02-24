@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, session, jsonify
+from flask import Flask, render_template, request, session, jsonify, url_for
 import pandas as pd
 import folium
 import json
@@ -8,6 +8,7 @@ import numpy as np
 import unidecode
 import folium.plugins as plugins
 from io import BytesIO
+import math
 
 
 
@@ -100,22 +101,23 @@ def create_initial_map(m):
                 'fillColor': '#FF8C00',
                 'color': '#FF8C00',
                 'weight': 1,
-                'fillOpacity': 0.3,
+                'fillOpacity': 0.5,
                 'line_opacity': 0.01
                }
         else:
             return {
                 'fillColor': 'black',
                 'color': 'transparent',
-                'fillOpacity': 0.2,
+                'fillOpacity': 0.1,
                 'line_opacity': 0.4
             }
 
     folium.GeoJson(raw_map, style_function=style_function).add_to(m)
+    map_path = os.path.join('static', 'initial_map.html')
 
-    m.save('static/initial_map.html')
-
-    return m
+    map_file_name = 'initial_map.html'  # Dosya adı
+    m.save(os.path.join('static', map_file_name))  # Dosyayı static klasörüne kaydet
+    return map_file_name  # Sadece dosya adını döndür
 
 
 def update_map_2(user_data, capacity_column, color_palette, threshold_scale, m):
@@ -276,15 +278,30 @@ def get_columns():
     return jsonify(columns)
 
 
+
+def replace_nan_with_null_in_dict(data):
+    """Recursively replaces NaN values with None in a dictionary or list of dictionaries."""
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if isinstance(v, float) and math.isnan(v):
+                data[k] = None  # NaN değerlerini None ile değiştir
+                print(k,v,"hohoho")
+            elif isinstance(v, dict) or isinstance(v, list):
+                data[k] = replace_nan_with_null_in_dict(v)  # İç içe yapılar için rekürsif çağrı
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            data[i] = replace_nan_with_null_in_dict(item)  # Liste elemanları için rekürsif çağrı
+    return data
+
 # Ana sayfa ve dosya yükleme formu
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
-   m = folium.Map(location=[37.925533, 35.06287], zoom_start=5.5,tiles="cartodbpositron",no_touch=True,disable_3d=True,prefer_canvas=True)
+   m = folium.Map(location=[37.925533, 35.06287], zoom_start=5.5,tiles="https://api.mapbox.com/styles/v1/alpdev/clt02w2jt00fx01pi171gaqsc/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoiYWxwZGV2IiwiYSI6ImNsc3p3dXlzejBxZDMya28ycjdjMms5cGEifQ.7rVuB4i8lTPAbidnGg6JbQ",prefer_canvas=True,attr='Mapbox Light')
    if request.method == 'POST':
         file = request.files['file'] 
         if file and '.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in ['xlsx', 'xls']:
             user_data = pd.read_excel(file)
-            old_column_name = request.form.get('GarentaŞubeInput')  # Assuming this gets the old column name correctly
+            old_column_name = user_data.columns[0]  # Assuming this gets the old column name correctly
             user_data = user_data.rename(columns={old_column_name: "Label"})
             selected_column = request.form.get('selected_column')
             user_data['Label'] = user_data['Label'].apply(normalize_text)
@@ -305,14 +322,26 @@ def upload_file():
                 m, top_branches, bottom_branches = update_map(user_data, selected_column, color_palette, threshold_scale,m)
             elif map_option == "1":
                 m, top_branches, bottom_branches = update_map_2(user_data, selected_column, color_palette, threshold_scale,m)
-
-            return render_template('index.html', map_file='updated_map.html', top_branches=top_branches,
-                                bottom_branches=bottom_branches, capacity_column=selected_column,threshold_scale=threshold_scale)
+            cleaned_top_branches = replace_nan_with_null_in_dict(top_branches)
+            cleaned_bottom_branches = replace_nan_with_null_in_dict(bottom_branches)
+            map_file_path = os.path.join(app.static_folder, 'generated_map.html')
+            m.save(map_file_path)
+            map_url = url_for('static', filename='generated_map.html')
+            response_data = {
+                'mapFile': map_url,
+                'topBranches': cleaned_top_branches,  # DataFrame'i list of dicts'e çevir
+                'bottomBranches': cleaned_bottom_branches,
+                'selectedColumn': selected_column
+            }
+            return jsonify(response_data)
+        
+        return jsonify({})
         
    else:
-        create_initial_map(m)
-        return render_template('index.html', map_file='initial_map.html', top_branches=[], bottom_branches=[],
-                               capacity_column="", columns=[])
+        map_file = create_initial_map(m)
+        return render_template('index.html', map_file=map_file, top_branches=[], bottom_branches=[], capacity_column="", columns=[])
+
+   
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 80))  # Azure tarafından sağlanan PORT değerini kullan
