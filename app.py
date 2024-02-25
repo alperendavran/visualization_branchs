@@ -33,7 +33,6 @@ garenta['City'] = garenta['City'].apply(normalize_text)
 with open('map-3.geojson', 'r') as f:
     turkey_map = json.load(f)
 
-
 with open('turkey_yeni2.geojson', 'r') as f:
     raw_map = json.load(f)
 
@@ -252,14 +251,19 @@ def update_map(user_data, capacity_column, color_palette,threshold_scale,m):
                 tooltip=tooltip
             ).add_to(geojson_layer)
 
-    top_branches = user_data[user_data[capacity_column] > user_data[capacity_column].mean()].sort_values(
-        by=capacity_column, ascending=False)[:10]
-    bottom_branches = user_data[user_data[capacity_column] < user_data[capacity_column].mean()].sort_values(
-        by=capacity_column)[:10]
+    mean=user_data[capacity_column].mean()
+    third=user_data[capacity_column].quantile(0.75)
+    first=user_data[capacity_column].quantile(0.25)
+
+    top_branches = user_data.loc[user_data[capacity_column] > third,("Label", capacity_column)].sort_values(
+        by=capacity_column, ascending=False).head(10)
+    bottom_branches = user_data.loc[user_data[capacity_column] < first,("Label", capacity_column)].sort_values(
+        by=capacity_column).head(10)
 
     top_branches_list = top_branches.to_dict('records')
+    print(top_branches_list)
     bottom_branches_list = bottom_branches.to_dict('records')
-
+    print(bottom_branches_list)
     # Güncellenmiş haritayı kaydet
     m.save('static/updated_map.html')
 

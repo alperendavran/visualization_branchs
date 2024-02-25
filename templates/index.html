@@ -32,6 +32,11 @@
 
         
 
+#loadingOverlay .spinner-border {
+    border-color: #ffa733 transparent transparent transparent; /* Üç tarafı transparan yaparak dönme efektini korur */
+}
+
+
     .btn-primary {
     background-color: #007bff;
     border-color: #007bff;
@@ -40,6 +45,22 @@
     padding-right: 10px;
     font-weight: bold;
 }
+
+.loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.7);
+            z-index: 1050;
+            justify-content: center;
+            align-items: center;
+        }
+        .visible {
+            display: flex !important;
+        }
 
     .btn-primary:hover, .btn-primary:focus {
         background-color: #0056b3;
@@ -64,41 +85,54 @@
 
 </head>
 
-
 <script>
+
 document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('dataVisualizationForm');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+
+    function toggleLoadingIndicator(show) {
+        if (show) {
+            loadingOverlay.classList.add('visible');
+        } else {
+            loadingOverlay.classList.remove('visible');
+        }
+    }
+
     form.addEventListener('submit', function(e) {
         e.preventDefault(); // Form gönderimini engelle
+        toggleLoadingIndicator(true);
 
-        var formData = new FormData(this);
-        fetch('/', {
-            method: 'POST',
-            body: formData,
-        })
-        .then(response => response.json())
-        .then(data => {
-            updateStatistics(data); // Sayfadaki istatistikleri güncelle
-            // Yanıttan alınan harita dosyası ile iframe src'yi güncelle
-            var mapIframe = document.querySelector('#mapContainer iframe');
-            if (mapIframe) {
-                // Eğer iframe zaten varsa, sadece src özelliğini güncelle
-                mapIframe.src = data.mapFile;
-            } else {
-                // Eğer iframe mevcut değilse, yeni bir iframe oluştur ve özelliklerini ayarla
-                var newIframe = document.createElement('iframe');
-                newIframe.src = data.mapFile; // Sunucudan gelen mapFile URL'ini kullan
-                newIframe.width = '100%';
-                newIframe.height = '600px'; // Yüksekliği ayarla
-                document.getElementById('mapContainer').appendChild(newIframe); // mapContainer'a ekle
-                
-            }
-        })
-        .catch(error => console.error('Error:', error));
+        // Yapay gecikmeyi buraya ekleyin
+        setTimeout(function() {
+            var formData = new FormData(form);
+            fetch('/', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                updateStatistics(data); // Sayfadaki istatistikleri güncelle
+                // Yanıttan alınan harita dosyası ile iframe src'yi güncelle
+                var mapIframe = document.querySelector('#mapContainer iframe');
+                if (mapIframe) {
+                    mapIframe.src = data.mapFile;
+                } else {
+                    var newIframe = document.createElement('iframe');
+                    newIframe.src = data.mapFile;
+                    newIframe.width = '100%';
+                    newIframe.height = '600px';
+                    document.getElementById('mapContainer').appendChild(newIframe);
+                }
+                toggleLoadingIndicator(false); // İşlem tamamlandığında yükleme göstergesini gizle
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                toggleLoadingIndicator(false); // Hata durumunda yükleme göstergesini gizle
+            });
+        }, 2000); // Bu 2 saniyelik bir gecikme ekler
     });
 });
-
-
 
 function updateStatistics(data) {
     // En Yüksek İstatistikli Şubeleri Güncelleme
@@ -241,13 +275,18 @@ function updateStatistics(data) {
         <div class="container mt-5">
             <div class="row">
                 <div class="col-md-12">
+                    <div id="loadingOverlay" class="loading-overlay">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Lütfen Bekleyiniz...</span>
+                        </div>
+                    </div>
                     <form action="/" method="post" enctype="multipart/form-data" class="mb-3" id="dataVisualizationForm">
                         <div class="form-group">
                             <label for="fileInput">Dosya Seç</label>
                             <input type="file" class="form-control-file" id="fileInput" name="file">
                         </div>
                         <div class="form-row">
-                            <div class="form-group col-md-2">
+                            <div class="form-group col-md-3">
                                 <label for="columnSelect">Veri Sütunu</label>
                                 <select class="form-control" id="columnSelect" name="selected_column"></select>
                             </div>
