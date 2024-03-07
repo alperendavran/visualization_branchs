@@ -5,3 +5,4 @@ branca
 numpy
 Unidecode
 openpyxl
+azure-storage-blob 
