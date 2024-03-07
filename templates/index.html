@@ -7,6 +7,12 @@
     <title>Data Upload and Visualization</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
+        #bottomBranchesContainer, #topBranchesContainer {
+    max-height: 600px; /* veya ihtiyacınıza göre bir değer */
+    overflow-y: auto; /* Dikey kaydırma çubuğunu etkinleştir */
+    overflow-x: hidden; /* Yatay kaydırma çubuğunu gizle */
+}
+
         body {
             background-color: #f8f9fa; /* Soft arka plan rengi */
             font-size: 16px; /* Genel font büyüklüğü */
@@ -14,7 +20,7 @@
 
         }
         .badge-high-capacity {
-            background-color: #ff5733; /* Ateş kırmızısı */
+            background-color: #f67b60; /* Ateş kırmızısı */
         }
         .badge-low-capacity {
             background-color: #b3d4ff; /* Soğuk mavi */
@@ -104,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleLoadingIndicator(true);
 
         // Yapay gecikmeyi buraya ekleyin
-        setTimeout(function() {
+
             var formData = new FormData(form);
             fetch('/', {
                 method: 'POST',
@@ -130,48 +136,79 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error:', error);
                 toggleLoadingIndicator(false); // Hata durumunda yükleme göstergesini gizle
             });
-        }, 2000); // Bu 2 saniyelik bir gecikme ekler
     });
 });
 
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetchDefaultDataAndUpdatePage();
+});
+
+function fetchDefaultDataAndUpdatePage() {
+    fetch('/default-data')
+    .then(response => response.json())
+    .then(data => {
+        updateStatistics(data);
+        
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+
+
+
+
 function updateStatistics(data) {
+    console.log("Gelen veri:", data); // Güncellenen veriyi logla
     // En Yüksek İstatistikli Şubeleri Güncelleme
 
     const mapTitle = document.getElementById('mapTitle');
 
-    if(data.selectedColumn) {
+    if (data.selectedColumn) {
         // Veri varsa ve seçilen sütun adı boş değilse
         mapTitle.innerText = `Garenta Şube ${data.selectedColumn} İstatistikleri`;
     } else {
         // Genel başlık
         mapTitle.innerText = `Tüm Türkiye'deki Garenta Şubeleri`;
     }
+    console.log("Selectd Column:", data.selectedColumn); // Güncellenen veriyi logla
 
     const topBranchesContainer = document.getElementById('topBranchesContainer');
-    if(topBranchesContainer) {
+    console.log("Güncellenen veri:", data.topBranches); // Güncellenen veriyi logla
+    if (topBranchesContainer && data.topBranches && data.topBranches.length > 0) {
         let topBranchesHtml = '<h3 style="font-size: 24px; font-weight: bold;">En Yüksek ' + data.selectedColumn + ' Şubeler</h3><ul class="list-group">';
         data.topBranches.forEach(branch => {
+            let value;
+            if (data.typeFlag) {
+                value = branch[data.selectedColumn] ? (branch[data.selectedColumn] * 1).toFixed(2) + '%' : '0%';
+            } else {
+                value = branch[data.selectedColumn] ? branch[data.selectedColumn].toFixed(0) : '0';
+            }
             topBranchesHtml += '<li class="list-group-item d-flex justify-content-between align-items-center">' +
-            branch.Label + '<span class="badge badge-high-capacity badge-pill">' + branch[data.selectedColumn].toFixed(1) + '</span></li>';
+                branch.Label + '<span class="badge badge-high-capacity badge-pill">' + value + '</span></li>';
         });
         topBranchesHtml += '</ul>';
         topBranchesContainer.innerHTML = topBranchesHtml;
     }
+
     const bottomBranchesContainer = document.getElementById('bottomBranchesContainer');
-    if(bottomBranchesContainer) {
+    if (bottomBranchesContainer && data.bottomBranches && data.bottomBranches.length > 0) {
         let bottomBranchesHtml = '<h3 style="font-size: 24px; font-weight: bold;">En Düşük ' + data.selectedColumn + ' Şubeler</h3><ul class="list-group">';
         data.bottomBranches.forEach(branch => {
+            let value;
+            if (data.typeFlag) {
+                value = branch[data.selectedColumn] ? (branch[data.selectedColumn] * 1).toFixed(2) + '%' : '0%';
+            } else {
+                value = branch[data.selectedColumn] ? branch[data.selectedColumn].toFixed(0) : '0';
+            }
             bottomBranchesHtml += '<li class="list-group-item d-flex justify-content-between align-items-center">' +
-            branch.Label + '<span class="badge badge-low-capacity badge-pill">' + branch[data.selectedColumn].toFixed(1) + '</span></li>';
+                branch.Label + '<span class="badge badge-low-capacity badge-pill">' + value + '</span></li>';
         });
         bottomBranchesHtml += '</ul>';
         bottomBranchesContainer.innerHTML = bottomBranchesHtml;
     }
-
     // Benzer şekilde, "bottomBranches" ve diğer veriler için de güncelleme yapabilirsiniz...
 }
-
-
 </script>
 
 
@@ -241,8 +278,6 @@ function updateStatistics(data) {
             .catch(error => console.error('Error:', error));
         });
     });
-</script>
-
 
 
     </script>
