@@ -274,7 +274,7 @@ def new_file():
     conn_string = "DefaultEndpointsProtocol=https;AccountName=sftpdeneme;AccountKey=Ks/pBLXYECIqDTZUa9zATbahogkLAEiGFog2xc41S9YJ4Y6oiOL977t7IqKr+0+UbHfoqdIpI++4+AStX8APEw==;EndpointSuffix=core.windows.net"
     blob_service_client = BlobServiceClient.from_connection_string(conn_string)
     container_client = blob_service_client.get_container_client("sftpdemo")
-    blob_client = blob_service_client.get_blob_client(container = "sftpdemo", blob="kapasite.xlsx")
+    blob_client = blob_service_client.get_blob_client(container = "subegorsellestirme", blob="kapasite.xlsx")
     f = open("kapasite.xlsx", "wb")
     f.write(blob_client.download_blob().content_as_bytes())
     f.close()
