@@ -1,0 +1,11 @@
+unidecode
+requests
+beautifulsoup4
+pandas
+geopandas
+shapely
+matplotlib
+plotly
+contextily
+geovoronoi
+azure-storage-blob
