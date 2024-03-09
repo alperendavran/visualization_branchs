@@ -1,0 +1,25 @@
+name: Harita Güncelleyici Workflow
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Her saat başı
+
+jobs:
+  update-map:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install -r harita_script/requirements.txt
+
+      - name: Run harita.py script
+        run: |
+          python harita_script/harita.py
