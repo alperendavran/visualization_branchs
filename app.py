@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, session, jsonify, url_for
+from flask import Flask, render_template, request, jsonify, url_for
 import pandas as pd
 import folium
 import json
@@ -8,7 +8,6 @@ import numpy as np
 import unidecode
 import folium.plugins as plugins
 from io import BytesIO
-import math
 from folium.plugins import MarkerCluster
 from azure.storage.blob import BlobServiceClient
 
@@ -26,14 +25,20 @@ def normalize_text(text):
     return text.title()
 
 
+conn_string = "DefaultEndpointsProtocol=https;AccountName=sftpdeneme;AccountKey=Ks/pBLXYECIqDTZUa9zATbahogkLAEiGFog2xc41S9YJ4Y6oiOL977t7IqKr+0+UbHfoqdIpI++4+AStX8APEw==;EndpointSuffix=core.windows.net"
+blob_service_client = BlobServiceClient.from_connection_string(conn_string)
+container_name = 'subegorsellestirme'
+blob_client = blob_service_client.get_blob_client(container = container_name, blob="garenta_haritası.geojson")
 
-garenta=pd.read_excel("garenta_branches.xlsx")
-garenta['City'] = garenta['City'].apply(normalize_text)
+
+with open("garenta_haritası.geojson", "wb") as download_file:
+    download_file.write(blob_client.download_blob().readall())
+
+# İndirilen dosyayı JSON olarak yükleme
+with open("garenta_haritası.geojson", "r") as file:
+    turkey_map = json.load(file)
 
 
-# GeoJSON verisini yükle
-with open('map (6).geojson', 'r') as f:
-    turkey_map = json.load(f)
 
 with open('turkey_yeni2.geojson', 'r') as f:
     raw_map = json.load(f)
@@ -54,25 +59,20 @@ def totaly_sure_percent(df, capacity_column):
                 return False
     return True
 
-
     
 def adjust_threshold_scale(data, column, manual_thresholds):
     min_value = data[column].min()
     max_value = data[column].max()
 
-    # Kullanıcı tarafından girilen eşik değerler listesinin ilk elemanı veri setinin minimum değerinden büyükse,
-    # veri setinin minimum değerini listenin başına ekle.
+    # Kullanıcı tarafından girilen eşik değerler listesinin ilk elemanı veri setinin minimum değerinden büyükse, veri setinin minimum değerini listenin başına ekle.
     if manual_thresholds and manual_thresholds[0] > min_value:
         manual_thresholds.insert(0, min_value)
 
-    # Kullanıcı tarafından girilen eşik değerler listesinin son elemanı veri setinin maksimum değerinden küçükse,
-    # veri setinin maksimum değerini listenin sonuna ekle.
+    # Kullanıcı tarafından girilen eşik değerler listesinin son elemanı veri setinin maksimum değerinden küçükse, veri setinin maksimum değerini listenin sonuna ekle.
     if manual_thresholds and manual_thresholds[-1] < max_value:
         manual_thresholds.append(max_value)
 
     return manual_thresholds
-
-
 
 
 def generate_threshold_scale(data, capacity_column):
@@ -85,40 +85,6 @@ def generate_threshold_scale(data, capacity_column):
     threshold_scale.append(np.max(data[capacity_column]))
     
     return threshold_scale
-
-
-def create_initial_map(m):
-
-    folium.plugins.Fullscreen(
-    position="topright",
-    title="Expand me",
-    title_cancel="Exit me",
-    force_separate_button=True,
-    ).add_to(m) 
-
-    def style_function(feature):
-        if feature['properties']['name'] in garenta["City"].to_list():
-            return {
-                'fillColor': '#FF8C00',
-                'color': '#FF8C00',
-                'weight': 1,
-                'fillOpacity': 0.5,
-                'line_opacity': 0.01
-               }
-        else:
-            return {
-                'fillColor': 'black',
-                'color': 'transparent',
-                'fillOpacity': 0.1,
-                'line_opacity': 0.4
-            }
-
-    folium.GeoJson(raw_map, style_function=style_function).add_to(m)
-    map_path = os.path.join('static', 'initial_map.html')
-
-    map_file_name = 'initial_map.html'  # Dosya adı
-    m.save(os.path.join('static', map_file_name))  # Dosyayı static klasörüne kaydet
-    return map_file_name  # Sadece dosya adını döndür
 
 
 def update_map_2(user_data, capacity_column, color_palette, threshold_scale, m):
@@ -282,9 +248,9 @@ def update_map(user_data, capacity_column, color_palette,threshold_scale,m):
         by=capacity_column)
 
     top_branches_list = top_branches.to_dict('records')
-    print(top_branches_list)
+    #print(top_branches_list)
     bottom_branches_list = bottom_branches.to_dict('records')
-    print(bottom_branches_list)
+    #print(bottom_branches_list)
     # Güncellenmiş haritayı kaydet
     m.save('static/updated_map.html')
 
@@ -299,7 +265,7 @@ def get_columns():
         stream = BytesIO(file.read())
         df = pd.read_excel(stream)
         columns = df.columns.tolist()[1:]
-        print(columns)
+        #print(columns)
     return jsonify(columns)
 
 
@@ -315,6 +281,18 @@ def new_file():
     default_data = pd.read_excel(r''+"kapasite.xlsx")
     return default_data
 
+
+
+def new_geojson():
+    conn_string = "DefaultEndpointsProtocol=https;AccountName=sftpdeneme;AccountKey=Ks/pBLXYECIqDTZUa9zATbahogkLAEiGFog2xc41S9YJ4Y6oiOL977t7IqKr+0+UbHfoqdIpI++4+AStX8APEw==;EndpointSuffix=core.windows.net"
+    blob_service_client = BlobServiceClient.from_connection_string(conn_string)
+    container_name = 'subegorsellestirme'
+    blob_client = blob_service_client.get_blob_client(container = container_name, blob="garenta_haritası.geojson")
+    f = open("garenta_haritası.geojson", "wb")
+    f.write(blob_client.download_blob().content_as_bytes())
+    f.close()
+    default_data = pd.read_excel(r''+"kapasite.xlsx")
+    return default_data
 
 
 
@@ -358,7 +336,7 @@ def upload_file():
             user_data['Label'] = user_data['Label'].apply(normalize_text)
             map_option = request.form.get('map_option')
             color_palette = request.form.get('color_palette', 'YlOrRd')
-            print(f"Seçilen Renk Paleti: {color_palette}")
+            #print(f"Seçilen Renk Paleti: {color_palette}")
             threshold_scale_input = request.form.get('threshold_scale')
 
             if threshold_scale_input and isinstance(threshold_scale_input, str):
