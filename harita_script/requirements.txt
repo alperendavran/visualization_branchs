@@ -1,3 +1,4 @@
+openpyxl
 unidecode
 requests
 beautifulsoup4
