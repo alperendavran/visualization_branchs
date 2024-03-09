@@ -284,7 +284,7 @@ merged_map_gdf.to_file(merged_map_path, driver='GeoJSON')
 conn_string = "DefaultEndpointsProtocol=https;AccountName=sftpdeneme;AccountKey=Ks/pBLXYECIqDTZUa9zATbahogkLAEiGFog2xc41S9YJ4Y6oiOL977t7IqKr+0+UbHfoqdIpI++4+AStX8APEw==;EndpointSuffix=core.windows.net"
 blob_service_client = BlobServiceClient.from_connection_string(conn_string)
 container_name = 'subegorsellestirme'
-container_client = blob_service_client.create_container(container_name)
+#container_client = blob_service_client.create_container(container_name)
 
 blob_name = 'garenta_haritası.geojson'
 blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
