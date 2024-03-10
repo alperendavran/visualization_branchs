@@ -4,7 +4,6 @@ on:
   schedule:
     - cron: '0 * * * *'  # Her saat başı
 
-
 jobs:
   update-map:
     runs-on: ubuntu-latest
