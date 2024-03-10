@@ -2,7 +2,7 @@ name: Harita Güncelleyici Workflow
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Her saat başı
+    - cron: '*/20 * * * *'  
 
 jobs:
   update-map:
