@@ -34,20 +34,10 @@ blob_client = blob_service_client.get_blob_client(container = container_name, bl
 with open("garenta_haritası.geojson", "wb") as download_file:
     download_file.write(blob_client.download_blob().readall())
 
-# İndirilen dosyayı JSON olarak yükleme
 with open("garenta_haritası.geojson", "r") as file:
-    turkey_map = json.load(file)
+    garenta_map = json.load(file)
 
-
-
-with open('turkey_yeni2.geojson', 'r') as f:
-    raw_map = json.load(f)
-
-
-for feature in raw_map['features']:
-    feature['properties']['name'] = normalize_text(feature['properties']['name'])
-
-for feature in turkey_map['features']:
+for feature in garenta_map['features']:
     if 'Label' not in feature['properties'] or feature['properties']['Label'] is None:
       feature['properties']['Label'] = 'Placeholder'
     feature['properties']['Label'] = normalize_text(feature['properties']['Label'])
@@ -88,6 +78,13 @@ def generate_threshold_scale(data, capacity_column):
 
 
 def update_map_2(user_data, capacity_column, color_palette, threshold_scale, m):
+    with open('./harita_script/turkiye_haritasi.json', 'r') as f:
+        turkey_map = json.load(f)
+
+
+    for feature in turkey_map['features']:
+        feature['properties']['name'] = normalize_text(feature['properties']['name'])
+
     type_flag = totaly_sure_percent(user_data, capacity_column)
     legend = capacity_column
 
@@ -99,7 +96,7 @@ def update_map_2(user_data, capacity_column, color_palette, threshold_scale, m):
         threshold_scale = generate_threshold_scale(user_data, capacity_column)
 
     folium.Choropleth(
-        geo_data=raw_map,
+        geo_data=turkey_map,
         data=user_data,
         columns=['Label', capacity_column],
         key_on='properties.name',
@@ -123,16 +120,15 @@ def update_map_2(user_data, capacity_column, color_palette, threshold_scale, m):
 
     # Creating a GeoJson layer for tooltips
     geojson_layer = folium.GeoJson(
-        raw_map,
+        turkey_map,
         style_function=style_function,
         name='geojson'
     ).add_to(m)
 
-    # Adding tooltips for each feature based on user data
-    for feature in raw_map['features']:
+    for feature in turkey_map['features']:
         prop = feature['properties']
         city_name = prop['name']
-        # Check if the city is in the user data
+
         if city_name in user_data['Label'].values:
             city_data = user_data[user_data['Label'] == city_name].iloc[0]
             if type_flag:
@@ -172,7 +168,7 @@ def update_map(user_data, capacity_column, color_palette,threshold_scale,m):
 
     if not threshold_scale:
         threshold_scale = generate_threshold_scale(user_data, capacity_column)
-    filtered_features = [feature for feature in turkey_map["features"] if feature["geometry"]["type"] != "Point"]
+    filtered_features = [feature for feature in garenta_map["features"] if feature["geometry"]["type"] != "Point"]
     geo_data={"type": "FeatureCollection", "features": filtered_features}
     folium.Choropleth(
     geo_data=geo_data,
@@ -208,7 +204,7 @@ def update_map(user_data, capacity_column, color_palette,threshold_scale,m):
     marker_cluster = MarkerCluster().add_to(m)  # Marker kümesini oluştur ve haritaya ekle
 
     # GeoJSON dosyasındaki her bir nokta için bir döngü
-    for feature in turkey_map['features']:
+    for feature in garenta_map['features']:
         if feature['geometry']["type"] == "Point":
             coordinates = feature['geometry']['coordinates']
             label = feature['properties']['Label']
@@ -282,39 +278,31 @@ def new_file():
     return default_data
 
 
-
-def new_geojson():
-    conn_string = "DefaultEndpointsProtocol=https;AccountName=sftpdeneme;AccountKey=Ks/pBLXYECIqDTZUa9zATbahogkLAEiGFog2xc41S9YJ4Y6oiOL977t7IqKr+0+UbHfoqdIpI++4+AStX8APEw==;EndpointSuffix=core.windows.net"
-    blob_service_client = BlobServiceClient.from_connection_string(conn_string)
-    container_name = 'subegorsellestirme'
-    blob_client = blob_service_client.get_blob_client(container = container_name, blob="garenta_haritası.geojson")
-    f = open("garenta_haritası.geojson", "wb")
-    f.write(blob_client.download_blob().content_as_bytes())
-    f.close()
-    default_data = pd.read_excel(r''+"kapasite.xlsx")
-    return default_data
-
-
-
 @app.route('/default-data')
 def default_data():
 
-    default_data=new_file()
-    m = folium.Map(location=[37.925533, 35.06287], zoom_start=5.5,tiles="https://api.mapbox.com/styles/v1/alpdev/clt02w2jt00fx01pi171gaqsc/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoiYWxwZGV2IiwiYSI6ImNsc3p3dXlzejBxZDMya28ycjdjMms5cGEifQ.7rVuB4i8lTPAbidnGg6JbQ",prefer_canvas=True,attr='Mapbox Light')
-    old_column_name = default_data.columns[0]
-    default_data.rename(columns={old_column_name: "Label"}, inplace=True)
-    default_data['Label'] = default_data['Label'].apply(normalize_text)
-    color_palette = 'YlOrRd'
-    selected_column = 'Kapasite'
-    default_data[selected_column].fillna(0, inplace=True)
-    m, top_branches, bottom_branches,typeflag = update_map(default_data, selected_column, color_palette, [],m)
+    user_data=new_file()
+    old_column_name = user_data.columns[0]
+    user_data.rename(columns={old_column_name: "Label"}, inplace=True)
+    user_data['Label'] = user_data['Label'].apply(normalize_text)
+    capacity_column = 'Kapasite'
+    user_data[capacity_column].fillna(0, inplace=True)
+    type_flag = totaly_sure_percent(user_data, capacity_column)
+    third=user_data[capacity_column].quantile(0.75)
+    first=user_data[capacity_column].quantile(0.25)
 
-    #print(top_branches,bottom_branches)
+    top_branches = user_data.loc[user_data[capacity_column] > third,("Label", capacity_column)].sort_values(
+        by=capacity_column, ascending=False)
+    bottom_branches = user_data.loc[user_data[capacity_column] < first,("Label", capacity_column)].sort_values(
+        by=capacity_column)
+    top_branches = top_branches.to_dict('records')
+    bottom_branches = bottom_branches.to_dict('records')
+
     return jsonify({
         'topBranches': top_branches,
         'bottomBranches': bottom_branches,
-        'selectedColumn': selected_column,
-        'typeFlag':typeflag
+        'selectedColumn': capacity_column,
+        'typeFlag':type_flag
     })
 
 
