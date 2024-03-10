@@ -241,7 +241,7 @@ def process_all_cities(branches_gdf, city_boundaries, output_dir):
   #print(f"Merged map saved to {merged_geojson_path}")
 
 branches_dataset = pd.read_excel("garenta_branches.xlsx")
-city_boundaries = gpd.read_file("türkiye_haritası.json")
+city_boundaries = gpd.read_file("./harita_script/turkiye_haritasi.json")
 city_boundaries["name"] = city_boundaries["name"].apply(lambda row: normalize_text(row))
 
 
