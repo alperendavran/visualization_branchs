@@ -155,7 +155,7 @@ def update_map_2(user_data, capacity_column, color_palette, threshold_scale, m):
 
     m.save('static/updated_map.html')
 
-    return m, top_branches_list, bottom_branches_list
+    return m, top_branches_list, bottom_branches_list,type_flag
 
 
 def update_map(user_data, capacity_column, color_palette,threshold_scale,m):
@@ -288,6 +288,9 @@ def default_data():
     capacity_column = 'Kapasite'
     user_data[capacity_column].fillna(0, inplace=True)
     type_flag = totaly_sure_percent(user_data, capacity_column)
+    if type_flag:
+        user_data[capacity_column] *= 100
+        legend = f"{capacity_column} Yüzdesi (%)"       
     third=user_data[capacity_column].quantile(0.75)
     first=user_data[capacity_column].quantile(0.25)
 
