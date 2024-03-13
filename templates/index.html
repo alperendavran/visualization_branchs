@@ -155,18 +155,28 @@ function fetchDefaultDataAndUpdatePage() {
 }
 
 
+function getFormattedDate() {
+    const date = new Date(); // Şu anki tarih ve zaman
+    const day = date.getDate(); // Günü al
+    const month = date.getMonth() + 1; // Ayı al (getMonth() 0'dan başlar)
+    const year = date.getFullYear(); // Yılı al
+
+    // Tarihi "GG/AA/YYYY" formatında döndür
+    return `${day}/${month}/${year}`;
+}
 
 
 
 function updateStatistics(data) {
     console.log("Gelen veri:", data); // Güncellenen veriyi logla
     // En Yüksek İstatistikli Şubeleri Güncelleme
+    const tarih = getFormattedDate(); // Dinamik tarih
 
     const mapTitle = document.getElementById('mapTitle');
 
     if (data.selectedColumn) {
         // Veri varsa ve seçilen sütun adı boş değilse
-        mapTitle.innerText = `Garenta Şube ${data.selectedColumn} İstatistikleri`;
+        mapTitle.innerText = `Garenta Şube ${data.selectedColumn} İstatistikleri - ${tarih}`;
     } else {
         // Genel başlık
         mapTitle.innerText = `Tüm Türkiye'deki Garenta Şubeleri`;
@@ -256,28 +266,60 @@ function updateStatistics(data) {
 
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('fileInput').addEventListener('change', function() {
-            var file = this.files[0];
-            var formData = new FormData();
-            formData.append('file', file);
+document.addEventListener('DOMContentLoaded', function() {
+    var fileInput = document.getElementById('fileInput');
+    var sheetSelect = document.getElementById('sheetSelect');
+    var columnSelect = document.getElementById('columnSelect');
 
-            fetch('/get-columns', {
-                method: 'POST',
-                body: formData,
-            })
-            .then(response => response.json())
-            .then(data => {
-                var select = document.getElementById('columnSelect');
-                select.innerHTML = ''; // Önceki seçenekleri temizle
-                data.forEach(function(column) {
-                    var option = new Option(column, column);
-                    select.appendChild(option);
-                });
-            })
-            .catch(error => console.error('Error:', error));
-        });
+    function fetchColumnsForSheet(sheetName) {
+        var formDataForColumns = new FormData();
+        formDataForColumns.append('file', fileInput.files[0]);
+        formDataForColumns.append('sheetName', sheetName);
+
+        fetch('/get-columns', {
+            method: 'POST',
+            body: formDataForColumns,
+        })
+        .then(response => response.json())
+        .then(columns => {
+            columnSelect.innerHTML = ''; 
+            columns.forEach(function(columnName) {
+                var option = new Option(columnName, columnName);
+                columnSelect.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    fileInput.addEventListener('change', function() {
+        var file = fileInput.files[0];
+        var formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/get-sheets', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(sheets => {
+            sheetSelect.innerHTML = ''; 
+            sheets.forEach(function(sheetName, index) {
+                var option = new Option(sheetName, sheetName);
+                sheetSelect.appendChild(option);
+                if(index === 0) { // Automatically fetch columns for the first sheet
+                    fetchColumnsForSheet(sheetName);
+                }
+            });
+        })
+        .catch(error => console.error('Error:', error));
     });
+
+    sheetSelect.addEventListener('change', function() {
+        var selectedSheet = sheetSelect.value;
+        fetchColumnsForSheet(selectedSheet);
+    });
+});
+
 
 
     </script>
@@ -295,7 +337,7 @@ function updateStatistics(data) {
             <div class="col-md-8">
                 <div id="mapContainer" class="map-container">
                     <!-- Dinamik başlık için h2 elemanı -->
-                    <h2 id="mapTitle" style="text-align: center; margin-bottom: 20px;">Tüm Türkiye'deki Garenta Şubeleri</h2>
+                    <h2 id="mapTitle" style="text-align: center; margin-bottom: 20px;"></h2>
                     <iframe id="mapIframe" src="{{ url_for('static', filename=map_file) }}" width="100%" height="95%"></iframe>
 
                 </div>
@@ -321,6 +363,11 @@ function updateStatistics(data) {
                             <input type="file" class="form-control-file" id="fileInput" name="file">
                         </div>
                         <div class="form-row">
+                            <div class="form-group col-md-3">
+                                <label for="sheetSelect">Sheet Seç</label>
+                                <select class="form-control" id="sheetSelect" name="selected_sheet"></select>
+                            </div>
+
                             <div class="form-group col-md-3">
                                 <label for="columnSelect">Veri Sütunu</label>
                                 <select class="form-control" id="columnSelect" name="selected_column"></select>

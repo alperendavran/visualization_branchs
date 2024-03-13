@@ -9,15 +9,11 @@ import os
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-import matplotlib.pyplot as plt
-import plotly.express as px
 import requests as req
-from bs4 import BeautifulSoup
 from shapely.geometry import Point, LineString, Polygon
-from shapely.ops import cascaded_union, unary_union, split
+from shapely.ops import unary_union, split
 from pathlib import Path
 import os
-import contextily as ctx
 from geovoronoi import voronoi_regions_from_coords, points_to_coords
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 
@@ -38,7 +34,7 @@ def normalize_text(text):
     return text.title()
 
 
-
+"""
 
 # Garenta şubeleri sayfasının URL'si
 base_url = 'https://www.garenta.com.tr/garenta-subeleri/'
@@ -75,19 +71,63 @@ data = []
 for label, (lat, lon) in zip(office_names, coordinates):
     data.append([normalize_text(label), float(lon), float(lat)])
 
-garenta_branches_as_point = pd.DataFrame(data, columns=['Label', 'Longitude', 'Latitude'])
+    
+conn_string = "DefaultEndpointsProtocol=https;AccountName=sftpdeneme;AccountKey=Ks/pBLXYECIqDTZUa9zATbahogkLAEiGFog2xc41S9YJ4Y6oiOL977t7IqKr+0+UbHfoqdIpI++4+AStX8APEw==;EndpointSuffix=core.windows.net"
+blob_service_client = BlobServiceClient.from_connection_string(conn_string)
+container_name = 'subegorsellestirme'
+blob_client = blob_service_client.get_blob_client(container = container_name, blob="subeler.xlsx")
+
+try:
+    with open("subeler.xlsx", "wb") as download_file:
+        download_file.write(blob_client.download_blob().readall())
+except Exception as e:
+    print(f"Dosya indirme sırasında bir hata oluştu: {e}")
+
+garenta_branches_as_point=pd.read_excel("subeler.xlsx")
+
+#garenta_branches_as_point = pd.DataFrame(data, columns=['Label', 'Longitude', 'Latitude'])
 
 #garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "ordu giresun havalimanı", 'Label'] = "ordu-giresun havalimanı" #prevent disperancies
-garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Van Havalimani (Karsilama)", 'Label'] = "Van Sehir" #prevent disprencies
-garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Istanbul Sabiha Gokcen Hvl. Dis Ht.", 'Label'] = "Istanbul Sabiha Gokcen Hvl." #prevent disperencies
-garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Istanbul Sabiha Gokcen Hvl. Ic Ht.", 'Label'] = "Istanbul Sabiha Gokcen Hvl."
+if garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Van Havalimani (Karsilama)", 'Label'] :
+    garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Van Havalimani (Karsilama)", 'Label'] = "Van Sehir" #prevent disprencies
+if garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Istanbul Sabiha Gokcen Hvl. Dis Ht.", 'Label']:
+    garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Istanbul Sabiha Gokcen Hvl. Dis Ht.", 'Label'] = "Istanbul Sabiha Gokcen Hvl." #prevent disperencies
+if garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Istanbul Sabiha Gokcen Hvl. Ic Ht.", 'Label']:
+    garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Istanbul Sabiha Gokcen Hvl. Ic Ht.", 'Label'] = "Istanbul Sabiha Gokcen Hvl."
 #garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "afyonkarahisar park afyon avm	", 'Label'] = "afyonkarahisar - park afyon avm"
 garenta_branches_as_point=garenta_branches_as_point.drop_duplicates() # remove one of the sabiha gökçen hvl.
 
 garenta_branches_as_point['City'] = garenta_branches_as_point['Label'].apply(lambda x: x.split("-")[0] if "-" in x else x.split()[0])
+if garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Gazipasa Alanya Havalimani"]:
+    garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Gazipasa Alanya Havalimani", 'City'] = "Antalya" #ilk isim fonksiyonunda şehir(şehir:"alanya") olarak ihlal eden alanya şubelerin şehirleri antalya olarak düzelti
+if garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Alanya Sehir"]:
+    garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Alanya Sehir", 'City'] = "Antalya"
+
+
+garenta_branches_as_point.to_excel("garenta_branches.xlsx", index=False)
+
+geometry = [Point(xy) for xy in zip(garenta_branches_as_point['Longitude'], garenta_branches_as_point['Latitude'])]
+crs = 'epsg:4326' #uygun kordinat sistemi versiyonu
+garenta_branchs_as_point_geojson = gpd.GeoDataFrame(garenta_branches_as_point, crs=crs, geometry=geometry)
+garenta_branches_point_geojson=garenta_branchs_as_point_geojson[["Label","geometry"]]
+garenta_branches_point_geojson.to_file("garenta_city_branches_points.geojson", driver='GeoJSON')
+"""
+
+
+conn_string = "DefaultEndpointsProtocol=https;AccountName=sftpdeneme;AccountKey=Ks/pBLXYECIqDTZUa9zATbahogkLAEiGFog2xc41S9YJ4Y6oiOL977t7IqKr+0+UbHfoqdIpI++4+AStX8APEw==;EndpointSuffix=core.windows.net"
+blob_service_client = BlobServiceClient.from_connection_string(conn_string)
+container_client = blob_service_client.get_container_client("sftpdemo")
+blob_client = blob_service_client.get_blob_client(container = "subegorsellestirme", blob="Koordinatlar.xlsx")
+f = open("Koordinatlar.xlsx", "wb")
+f.write(blob_client.download_blob().content_as_bytes())
+f.close()
+garenta_branches_as_point = pd.read_excel(r''+"Koordinatlar.xlsx")
+garenta_branches_as_point = garenta_branches_as_point[["Şube Tanımı", "DONUSSUBE.XKORD", "DONUSSUBE.YKORD"]]
+garenta_branches_as_point = garenta_branches_as_point.rename(columns={"Şube Tanımı": "Label", "DONUSSUBE.XKORD": "Longitude", "DONUSSUBE.YKORD": "Latitude"})
+garenta_branches_as_point["Label"]=garenta_branches_as_point["Label"].apply(lambda x: normalize_text(x))
+garenta_branches_as_point['City'] = garenta_branches_as_point['Label'].apply(lambda x: x.split("-")[0] if "-" in x else x.split()[0])
 garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Gazipasa Alanya Havalimani", 'City'] = "Antalya" #ilk isim fonksiyonunda şehir(şehir:"alanya") olarak ihlal eden alanya şubelerin şehirleri antalya olarak düzelti
 garenta_branches_as_point.loc[garenta_branches_as_point['Label'] == "Alanya Sehir", 'City'] = "Antalya"
-
 
 garenta_branches_as_point.to_excel("garenta_branches.xlsx", index=False)
 
