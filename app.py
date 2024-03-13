@@ -285,7 +285,7 @@ def new_file():
     blob_service_client = BlobServiceClient.from_connection_string(conn_string)
     container_client = blob_service_client.get_container_client("sftpdemo")
     blob_client = blob_service_client.get_blob_client(container = "subegorsellestirme", blob="Koordinatlar.xlsx")
-    f = open("kapasite.xlsx", "wb")
+    f = open("Koordinatlar.xlsx", "wb")
     f.write(blob_client.download_blob().content_as_bytes())
     f.close()
     default_data = pd.read_excel(r''+"Koordinatlar.xlsx",sheet_name="Kapasite")
