@@ -253,16 +253,30 @@ def update_map(user_data, capacity_column, color_palette,threshold_scale,m):
     # DataFrame'leri değil, listeleri döndür
     return m, top_branches_list, bottom_branches_list,type_flag
 
+
+
+@app.route('/get-sheets', methods=['POST'])
+def get_sheets():
+    file = request.files.get('file')
+    if file:
+        excel_file = BytesIO(file.read())
+        xls = pd.ExcelFile(excel_file)
+        sheets = xls.sheet_names
+        return jsonify(sheets)
+    else:
+        return jsonify({"error": "No file provided"}), 400
+    
 @app.route('/get-columns', methods=['POST'])
 def get_columns():
     file = request.files.get('file')
-    if file:
-        # Dosyayı BytesIO nesnesi olarak oku
-        stream = BytesIO(file.read())
-        df = pd.read_excel(stream)
+    sheet_name = request.form.get('sheetName')
+    if file and sheet_name:
+        excel_file = BytesIO(file.read())
+        df = pd.read_excel(excel_file, sheet_name=sheet_name)
         columns = df.columns.tolist()[1:]
-        #print(columns)
-    return jsonify(columns)
+        return jsonify(columns)
+    else:
+        return jsonify({"error": "No file or sheet name provided"}), 400
 
 
 
@@ -270,11 +284,12 @@ def new_file():
     conn_string = "DefaultEndpointsProtocol=https;AccountName=sftpdeneme;AccountKey=Ks/pBLXYECIqDTZUa9zATbahogkLAEiGFog2xc41S9YJ4Y6oiOL977t7IqKr+0+UbHfoqdIpI++4+AStX8APEw==;EndpointSuffix=core.windows.net"
     blob_service_client = BlobServiceClient.from_connection_string(conn_string)
     container_client = blob_service_client.get_container_client("sftpdemo")
-    blob_client = blob_service_client.get_blob_client(container = "subegorsellestirme", blob="kapasite.xlsx")
+    blob_client = blob_service_client.get_blob_client(container = "subegorsellestirme", blob="Koordinatlar.xlsx")
     f = open("kapasite.xlsx", "wb")
     f.write(blob_client.download_blob().content_as_bytes())
     f.close()
-    default_data = pd.read_excel(r''+"kapasite.xlsx")
+    default_data = pd.read_excel(r''+"Koordinatlar.xlsx",sheet_name="Kapasite")
+
     return default_data
 
 
@@ -290,7 +305,7 @@ def default_data():
     type_flag = totaly_sure_percent(user_data, capacity_column)
     if type_flag:
         user_data[capacity_column] *= 100
-        legend = f"{capacity_column} Yüzdesi (%)"       
+    
     third=user_data[capacity_column].quantile(0.75)
     first=user_data[capacity_column].quantile(0.25)
 
@@ -320,7 +335,9 @@ def upload_file():
    if request.method == 'POST':
         file = request.files['file'] 
         if file and '.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in ['xlsx', 'xls']:
-            user_data = pd.read_excel(file)
+            sn = request.form.get('selected_sheet')
+            print(sn)
+            user_data = pd.read_excel(file,sheet_name=sn)
             old_column_name = user_data.columns[0]  
             user_data = user_data.rename(columns={old_column_name: "Label"})
             selected_column = request.form.get('selected_column')
