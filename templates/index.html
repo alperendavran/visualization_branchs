@@ -157,7 +157,7 @@ function fetchDefaultDataAndUpdatePage() {
 
 function getFormattedDate() {
     const date = new Date(); // Şu anki tarih ve zaman
-    const day = date.getDate(); // Günü al
+    const day = date.getDate()-1; // Günü al
     const month = date.getMonth() + 1; // Ayı al (getMonth() 0'dan başlar)
     const year = date.getFullYear(); // Yılı al
 
