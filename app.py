@@ -271,12 +271,17 @@ def get_columns():
     file = request.files.get('file')
     sheet_name = request.form.get('sheetName')
     if file and sheet_name:
+        # Dosyayı ve seçilen sheet'i okuyup sütun isimlerini al
         excel_file = BytesIO(file.read())
+        if not sheet_name:  # Eğer sheet ismi verilmediyse, ilk sheet'i seç
+            sheet_name = excel_file.sheet_names[0]
         df = pd.read_excel(excel_file, sheet_name=sheet_name)
         columns = df.columns.tolist()[1:]
         return jsonify(columns)
     else:
         return jsonify({"error": "No file or sheet name provided"}), 400
+
+
 
 
 
